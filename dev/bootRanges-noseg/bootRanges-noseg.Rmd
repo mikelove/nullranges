@@ -239,6 +239,11 @@ seg_hmm <- eh[["EH7308"]]
 seg <- seg_cbs
 ```
 
+```{r}
+library(nullranges)
+suppressPackageStartupMessages(library(plyranges))
+library(patchwork)
+```
 
 # Bootstrapping ranges
 
