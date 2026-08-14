@@ -1,5 +1,5 @@
 ---
-title: "Introduction to bootRanges"
+title: "Introduction to bootRanges (test build: no genome segmentation, no EnsDb.Hsapiens.v86)"
 author: "Wancen Mu"
 date: "`r format(Sys.Date(), '%m/%d/%Y')`"
 bibliography: library.bib
@@ -16,6 +16,11 @@ editor_options:
   markdown: 
     wrap: 72
 ---
+
+**Note:** This test build omits the "Segmentation by gene density"
+section, including its `EnsDb.Hsapiens.v86`, `DNAcopy`, and `RcppHMM`
+demonstrations, to test vignette build time with fewer dependencies.
+The pre-built `ExperimentHub` segmentation used later is unchanged.
 
 # Introduction 
 
@@ -124,13 +129,12 @@ summarized as:
 knitr::include_graphics("images/bootRanges.jpeg")
 ```
 
-In this vignette, we give an example of segmenting the hg38 genome by
-Ensembl gene density, performing bootstrap sampling of peaks ranges,
-and evaluating overlaps for observed peaks and bootstrap peaks. We
-also provide other examples of statistics that can be computed with
-the `bootRanges` framework, including a single cell multi-omics
-example and a special case of bootstrapping features in one region of
-the genome.
+In this vignette, we use a pre-built segmentation of the hg38 genome,
+perform bootstrap sampling of peak ranges, and evaluate overlaps for
+observed peaks and bootstrap peaks. We also provide other examples of
+statistics that can be computed with the `bootRanges` framework,
+including a single cell multi-omics example and a special case of
+bootstrapping features in one region of the genome.
 
 **Proportional blocks:**
 A finally consideration is whether the blocks used to generate the
@@ -214,8 +218,10 @@ There are two options for choosing a segmentation, either:
 Given that these genome segmentation evaluations take time and involve consideration of
 multiple criteria, we have provided our recommended segmentation for
 hg38. *nullranges* has generated pre-built segmentations for easy use,
-which were generated using code outlined below in the *Segmentation by
-gene density* section.
+which were generated using code outlined in the "Segmentation by gene
+density" section of the full `bootRanges` vignette. That section is
+omitted here to test build time without `EnsDb.Hsapiens.v86`, `DNAcopy`,
+and `RcppHMM`.
 
 Pre-built segmentations using either *CBS* or *HMM* methods with
 $L_s=2e6$ considering excludable regions can be downloaded directly
@@ -231,97 +237,10 @@ seg_hmm <- eh[["EH7308"]]
 seg <- seg_cbs
 ```
 
-**Segmentation by gene density**
-
-This section describes how we generated the pre-built segmentations,
-such that users with a different genome can generate a segmentation
-for their own purposes. First we obtain the Ensembl genes
-[@ensembl2021] for segmenting by gene density. We obtain these using
-the *ensembldb* package [@ensembldb].
-
-```{r}
-suppressPackageStartupMessages(library(ensembldb))
-suppressPackageStartupMessages(library(EnsDb.Hsapiens.v86))
-edb <- EnsDb.Hsapiens.v86
-filt <- AnnotationFilterList(GeneIdFilter("ENSG", "startsWith"))
-g <- genes(edb, filter = filt)
-```
-
-We perform some processing to align the sequences (chromosomes) of `g`
-with our excluded regions and our features of interest (DNase
-hypersensitive sites, or DHS, defined below).
-
-```{r}
-library(GenomeInfoDb)  # for keepStandardChromosomes()
-g <- keepStandardChromosomes(g, pruning.mode = "coarse")
-# MT is too small for bootstrapping, so must be removed
-seqlevels(g, pruning.mode="coarse") <- setdiff(seqlevels(g), "MT")
-# normally we would assign a new style, but for recent host issues
-# that produced vignette build problems, we use `paste0`
-## seqlevelsStyle(g) <- "UCSC" 
-seqlevels(g) <- paste0("chr", seqlevels(g))
-genome(g) <- "hg38"
-g <- sortSeqlevels(g)
-g <- sort(g)
-table(seqnames(g))
-```
-
-**CBS segmentation**
-
-We first demonstrate the use of a CBS segmentation as implemented in
-*DNAcopy* [@dnacopy].
-
-We load the *nullranges* and *plyranges* packages, and *patchwork* in
-order to produce grids of plots.
-
 ```{r}
 library(nullranges)
 suppressPackageStartupMessages(library(plyranges))
 library(patchwork)
-```
-
-We subset the excluded ranges to those which are 500 bp or larger. The
-motivation for this step is to avoid segmenting the genome into many
-small pieces due to an abundance of short excluded regions. Note that we
-re-save the excluded ranges to `exclude`.
-
-```{r seg-cbs, fig.width=5, fig.height=4}
-set.seed(5)
-exclude <- exclude %>%
-  filter(width(exclude) >= 500)
-L_s <- 1e6
-seg_cbs <- segmentDensity(g, n = 3, L_s = L_s,
-                          exclude = exclude, type = "cbs")
-plots <- lapply(c("ranges","barplot","boxplot"), function(t) {
-  plotSegment(seg_cbs, exclude, type = t)
-})
-plots[[1]]
-plots[[2]] + plots[[3]]
-```
-
-Note here, the default *ranges* plot shows the whole genome.  Some of
-the state transitions within small regions cannot be visualized.  One
-can look into specific regions to observe segmentation states, by
-specifying the `region` argument.
-
-```{r, fig.width=4, fig.height=3}
-region <- GRanges("chr16", IRanges(3e7,4e7))
-plotSegment(seg_cbs, exclude, type="ranges", region=region)
-```
-
-**Alternatively: HMM segmentation**
-
-Here we use an alternative segmentation implemented in the *RcppHMM*
-CRAN package, using the `initGHMM`, `learnEM`, and `viterbi` functions.
-
-```{r seg-hmm, fig.width=5, fig.height=4}
-seg_hmm <- segmentDensity(g, n = 3, L_s = L_s,
-                          exclude = exclude, type = "hmm")
-plots <- lapply(c("ranges","barplot","boxplot"), function(t) {
-  plotSegment(seg_hmm, exclude, type = t)
-})
-plots[[1]]
-plots[[2]] + plots[[3]]
 ```
 
 # Bootstrapping ranges
