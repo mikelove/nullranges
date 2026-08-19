@@ -205,8 +205,9 @@ metadata can help make the analysis much more efficient.
 ```{r}
 suppressPackageStartupMessages(library(nullrangesData))
 dhs <- DHSA549Hg38()
-dhs <- dhs %>% filter(signalValue > 100) %>%
-  mutate(id = seq_along(.)) %>%
+dhs <- dhs |>
+  filter(signalValue > 100) |>
+  mutate(id = seq_along(dhs)) |>
   select(id, signalValue)
 length(dhs)
 table(seqnames(dhs))
@@ -250,13 +251,13 @@ iter=0. Then compute summaries:
 
 ```{r}
 suppressPackageStartupMessages(library(tidyr))
-combined <- dhs %>% 
-  mutate(iter=0) %>%
-  bind_ranges(boots) %>% 
+combined <- dhs |>
+  mutate(iter=0) |>
+  bind_ranges(boots) |>
   select(iter)
-stats <- combined %>% 
-  group_by(iter) %>%
-  summarize(n = n()) %>%
+stats <- combined |>
+  group_by(iter) |>
+  summarize(n = n()) |>
   as_tibble()
 head(stats)
 ```
@@ -273,10 +274,10 @@ below. In pseudocode, the general outline will be:
 ```{r eval=FALSE}
 # pseudocode for the general paradigm:
 boots <- bootRanges(y) # make bootstrapped y
-x %>% join_overlap_inner(boots) %>% # overlaps of x with bootstrapped y
-  group_by(x_id, iter) %>% # collate by x ID and the bootstrap iteration
-  summarize(some_statistic = ...) %>% # compute some summary on metadata
-  as_tibble() %>% # pass to tibble
+x |> join_overlap_inner(boots) |> # overlaps of x with bootstrapped y
+  group_by(x_id, iter) |> # collate by x ID and the bootstrap iteration
+  summarize(some_statistic = ...) |> # compute some summary on metadata
+  as_tibble() |> # pass to tibble
   complete(
     x_id, iter, # for any missing combinations of x ID and iter...
     fill=list(some_statistic = 0) # ...fill in missing values
@@ -297,7 +298,7 @@ x <- GRanges("chr2", IRanges(1 + 50:99 * 1e6, width=1e6), x_id=1:50)
 ```
 
 ```{r}
-x <- x %>% mutate(n_overlaps = count_overlaps(., dhs))
+x <- x |> mutate(n_overlaps = count_overlaps(x, dhs))
 sum( x$n_overlaps )
 ```
 
@@ -312,12 +313,12 @@ Note that we need to use `tidyr::complete` in order to fill in
 combinations of `x` and `iter` where the overlap was 0.
 
 ```{r}
-boot_stats <- x %>% join_overlap_inner(boots) %>%
-  group_by(x_id, iter) %>%
-  summarize(n_overlaps = n()) %>%
-  as_tibble() %>%
-  complete(x_id, iter, fill=list(n_overlaps = 0)) %>%
-  group_by(iter) %>%
+boot_stats <- x |> join_overlap_inner(boots) |>
+  group_by(x_id, iter) |>
+  summarize(n_overlaps = n()) |>
+  as_tibble() |>
+  complete(x_id, iter, fill=list(n_overlaps = 0)) |>
+  group_by(iter) |>
   summarize(sumOverlaps = sum(n_overlaps))
 ```
 
@@ -347,14 +348,14 @@ ggplot(boot_stats, aes(sumOverlaps)) +
 ## Computing the sum of signal value for nearby peaks
 
 ```{r}
-x_obs <- x %>% join_overlap_inner(dhs,maxgap=1e3)
+x_obs <- x |> join_overlap_inner(dhs,maxgap=1e3)
 sum(x_obs$signalValue )
-boot_stats <- x %>% join_overlap_inner(boots,maxgap=1e3)  %>%
-  group_by(x_id, iter) %>%
-  summarize(Signal = sum(signalValue)) %>%
-  as_tibble() %>% 
-  complete(x_id, iter, fill=list(Signal = 0)) %>%
-  group_by(iter) %>%
+boot_stats <- x |> join_overlap_inner(boots,maxgap=1e3) |>
+  group_by(x_id, iter) |>
+  summarize(Signal = sum(signalValue)) |>
+  as_tibble() |>
+  complete(x_id, iter, fill=list(Signal = 0)) |>
+  group_by(iter) |>
   summarize(sumSignal = sum(Signal))
 ```
 
@@ -389,8 +390,8 @@ suppressPackageStartupMessages(library(nullrangesData))
 dhs <- DHSA549Hg38()
 region <- GRanges("chr1", IRanges(10e6 + 1, width=1e6))
 x <- GRanges("chr1", IRanges(10e6 + 0:9 * 1e5 + 1, width=1e4))
-y <- dhs %>% filter_by_overlaps(region) %>% select(NULL)
-x %>% mutate(num_overlaps = count_overlaps(., y))
+y <- dhs |> filter_by_overlaps(region) |> select(NULL)
+x |> mutate(num_overlaps = count_overlaps(x, y))
 ```
 
 We can easily bootstrap data just in this region using the following
@@ -401,7 +402,7 @@ seqlevels(y) <- "chr1"
 set.seed(1)
 boot <- bootRanges(y, blockLength=1e5, R=1, withinChrom=TRUE)
 boot
-x %>% mutate(num_overlaps = count_overlaps(., boot))
+x |> mutate(num_overlaps = count_overlaps(x, boot))
 ```
 
 For a segmented one-region bootstrap, see `oneRegionSegment()` and the
