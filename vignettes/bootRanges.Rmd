@@ -21,6 +21,7 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(fig.width=5, fig.height=5, message=FALSE, warning=FALSE)
+suppressPackageStartupMessages(library(plyranges))
 ```
 
 In this vignette, we demonstrate the block bootstrap functionality
